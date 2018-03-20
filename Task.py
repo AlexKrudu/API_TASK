@@ -82,6 +82,7 @@ class TextBox(LabelMenu):
         self.request = None
 
     def get_event(self, event):
+        global map
         if event.type == pygame.MOUSEMOTION:
             self.collided = self.Rect.collidepoint(event.pos)
         if self.done:
@@ -91,10 +92,11 @@ class TextBox(LabelMenu):
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 self.active = False
                 self.done = True
-            elif event.key == pygame.K_BACKSPACE:
+                map = Map(self.text)
+            elif event.key == pygame.K_BACKSPACE and self.active:
                 if len(self.text) > 0:
                     self.text = self.text[:-1]
-            else:
+            elif self.active:
                 self.text += event.unicode
                 if self.rendered_rect.width > self.Rect.width:
                     self.text = self.text[:-1]
@@ -124,6 +126,8 @@ class ButtonMenu(LabelMenu):
         self.bgcolor = pygame.Color("blue")
         self.pressed = False
         self.collided = False
+        self.index = 0
+        self.liste = ["map", "sat", "skl"]
         self.value = value
         self.font_color = {'up': pygame.Color("black"), "collide": pygame.Color("white")}
 
@@ -145,52 +149,76 @@ class ButtonMenu(LabelMenu):
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.pressed = self.Rect.collidepoint(event.pos)
             if self.pressed:
-                return self.value
+                self.index += 1
+                self.text = self.liste[self.index % 3]
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.pressed = False
 
 
 class Map:
     def __init__(self, address):
+        self.map_file = None
         self.address = address
-        if address.split()[0].isalpha():
-            self.coords = address.split()
-        else:
+        if address[0].isalpha():
             self.coords = self.geo_coords()
+        else:
+            self.coords = self.address
         self.draw()
 
     def geo_coords(self):
-        geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/?geocode="
-        geocoder_2 = "&format=json"
-        response = None
+        geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
+        geocoder_params = {
+            "geocode" : self.address,
+            "format" : "json"
+        }
         try:
-            geocoder_request = "".join([geocoder_api_server, self.address, geocoder_2])
-            response = requests.get(geocoder_request)
+            response = requests.get(geocoder_api_server, params = geocoder_params)
             if response:
                 json_response = response.json()
-                toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
-                toponym_coords = toponym["Point"]["pos"]
+                self.toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+                toponym_coords = self.toponym["Point"]["pos"]
                 return toponym_coords
         except:
-            pass
+            print("Что то пошло не так")
         return None
 
-    def draw():
+    def get_bounds(self, toponym):
+        bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
+            "upperCorner"].split()
+        koef = 3  # Подобран опытным путем
+        delta = str((float(bounds[1][0]) - float(bounds[0][0])) / koef)
+        delta1 = str((float(bounds[1][1]) - float(bounds[0][1])) / koef)
+        return delta, delta1
+
+    def draw(self):
         # toponym_to_find = self.address
-        map_image = None
-        req = "http://static-maps.yandex.ru/1.x/?ll="
-        req2 = "&spn=0.1,0.1&l=map"
+        req = "http://static-maps.yandex.ru/1.x/"
+        req_params = {
+            "ll" : ','.join(self.coords.split()),
+            "spn": ",".join(self.get_bounds(self.toponym)),
+            "l" : "map",
+            "size" : "400,400"
+        }
 
         try:
-            map_request = req + self.coords[1] + self.coords[0] + req2
-            response = requests.get(map_request)
+            response = requests.get(req, params = req_params)
             if response:
-                map_screen(response)
+                self.map_file = "map.png"
+                try:
+                    with open(self.map_file, "wb") as file:
+                        file.write(response.content)
+                except IOError as ex:
+                    print("Ошибка записи временного файла:", ex)
+                    sys.exit(2)
+
+                # Инициализируем pygame
+                pygame.init()
+                # Рисуем картинку, загружаемую из только что созданного файла.
+                screen.blit(pygame.image.load(self.map_file), (150, 200))
+                # Переключаем экран и ждем закрытия окна.
+                pygame.display.flip()
         except:
             pass
-
-        # toponym_to_find = None
-        # geocoder_params = {"geocode": toponym_to_find, "format": "json"}
 
 
 def terminate():
@@ -201,14 +229,13 @@ def terminate():
 def start_screen():
     BackGround = Background()
     gui = GUI()
-    box = TextBox((700, 400, 170, 50), "Enter your request here")
+    box = TextBox((700, 600, 170, 50), "Enter your request here")
     gui.add_element(LabelMenu((450, 30, 300, 70), "Map Reader X"))
-    gui.add_element(ButtonMenu((1000, 310, 170, 50), "Settings", "n"))
+    gui.add_element(LabelMenu((1000, 210, 170, 50), "Scale:"))
+    gui.add_element(TextBox((1000, 260, 170, 50), "default"))
+    gui.add_element(LabelMenu((950, 310, 170, 50), "Type of map:"))
+    gui.add_element(ButtonMenu((1000, 360, 170, 50), "map", "x"))
     gui.add_element(box)
-
-    if box.done:
-        draw_map(box.request)
-
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -219,36 +246,16 @@ def start_screen():
             if gui.get_event(event) == "q":
                 terminate()
 
-        screen.fill([255, 255, 255])
         screen.blit(BackGround.image, BackGround.rect)
+        try:
+            screen.blit(pygame.image.load(map.map_file), (150, 200))
+        except:
+            pass
 
         gui.render(screen)
         gui.update()
         pygame.display.flip()
 
-
-def map_screen():
-    map_file = "map.png"
-    try:
-        with open(map_file, "wb") as file:
-            file.write(response.content)
-    except IOError as ex:
-        print("Ошибка записи временного файла:", ex)
-        sys.exit(2)
-
-    # Инициализируем pygame
-    pygame.init()
-    screen = pygame.display.set_mode((600, 450))
-    # Рисуем картинку, загружаемую из только что созданного файла.
-    screen.blit(pygame.image.load(map_file), (0, 0))
-    # Переключаем экран и ждем закрытия окна.
-    pygame.display.flip()
-    while pygame.event.wait().type != pygame.QUIT:
-        pass
-    pygame.quit()
-
-    # Удаляем за собой файл с изображением.
-    os.remove(map_file)
 
 
 start_screen()
