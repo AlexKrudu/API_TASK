@@ -1,6 +1,7 @@
 import pygame
 import sys
 import requests
+import os
 
 map_image = None
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
@@ -82,7 +83,6 @@ class TextBox(LabelMenu):
         self.request = None
 
     def get_event(self, event):
-        global map
         if event.type == pygame.MOUSEMOTION:
             self.collided = self.Rect.collidepoint(event.pos)
         if self.done:
@@ -92,7 +92,7 @@ class TextBox(LabelMenu):
             if event.key in (pygame.K_RETURN, pygame.K_KP_ENTER):
                 self.active = False
                 self.done = True
-                map = Map(self.text)
+                #map = Map(self.text, scale_box.text)
             elif event.key == pygame.K_BACKSPACE and self.active:
                 if len(self.text) > 0:
                     self.text = self.text[:-1]
@@ -156,7 +156,8 @@ class ButtonMenu(LabelMenu):
 
 
 class Map:
-    def __init__(self, address):
+    def __init__(self, address, scale):
+        self.scale = float(scale)
         self.map_file = None
         self.address = address
         if address[0].isalpha():
@@ -186,6 +187,8 @@ class Map:
         bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
             "upperCorner"].split()
         koef = 3  # Подобран опытным путем
+        if self.scale != "default" and self.scale != 0:
+            koef = self.scale
         delta = str((float(bounds[1][0]) - float(bounds[0][0])) / koef)
         delta1 = str((float(bounds[1][1]) - float(bounds[0][1])) / koef)
         return delta, delta1
@@ -214,7 +217,7 @@ class Map:
                 # Инициализируем pygame
                 pygame.init()
                 # Рисуем картинку, загружаемую из только что созданного файла.
-                screen.blit(pygame.image.load(self.map_file), (150, 200))
+                screen.blit(pygame.image.load("map.png"), (150, 200))
                 # Переключаем экран и ждем закрытия окна.
                 pygame.display.flip()
         except:
@@ -224,31 +227,79 @@ class Map:
 def terminate():
     pygame.quit()
     sys.exit()
+    os.remove("map.png")
 
 
 def start_screen():
     BackGround = Background()
     gui = GUI()
     box = TextBox((700, 600, 170, 50), "Enter your request here")
+    scale_box = TextBox((1000, 260, 170, 50), "default")
     gui.add_element(LabelMenu((450, 30, 300, 70), "Map Reader X"))
     gui.add_element(LabelMenu((1000, 210, 170, 50), "Scale:"))
-    gui.add_element(TextBox((1000, 260, 170, 50), "default"))
+    gui.add_element(scale_box)
     gui.add_element(LabelMenu((950, 310, 170, 50), "Type of map:"))
     gui.add_element(ButtonMenu((1000, 360, 170, 50), "map", "x"))
     gui.add_element(box)
     while True:
         for event in pygame.event.get():
+            if box.done:
+                map = Map(box.text, scale_box.text)
             if event.type == pygame.QUIT:
                 terminate()
             if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_UP:
+                    y = map.get_bounds(map.toponym)[1]
+                    map.coords = [float(i) for i in map.coords.split()]
+                    map.coords[1] += float(y)
+                    map.coords = [str(i) for i in map.coords]
+                    map.coords = ' '.join(map.coords)
+                    map.draw()
+                if event.key == pygame.K_DOWN:
+                    y = map.get_bounds(map.toponym)[1]
+                    map.coords = [float(i) for i in map.coords.split()]
+                    map.coords[1] -= float(y)
+                    map.coords = [str(i) for i in map.coords]
+                    map.coords = ' '.join(map.coords)
+                    map.draw()
+                if event.key == pygame.K_LEFT:
+                    y = map.get_bounds(map.toponym)[0]
+                    map.coords = [float(i) for i in map.coords.split()]
+                    map.coords[0] -= float(y)
+                    map.coords = [str(i) for i in map.coords]
+                    map.coords = ' '.join(map.coords)
+                    map.draw()
+                if event.key == pygame.K_RIGHT:
+                    y = map.get_bounds(map.toponym)[0]
+                    map.coords = [float(i) for i in map.coords.split()]
+                    map.coords[0] += float(y)
+                    map.coords = [str(i) for i in map.coords]
+                    map.coords = ' '.join(map.coords)
+                    map.draw()
+
+
+                if event.key == pygame.K_PAGEDOWN:
+                    map.scale *= 0.7
+                    if map.scale < 0.004:
+                        map.scale = 1
+                    map.draw()
+                    print(map.scale)
+                if event.key == pygame.K_PAGEUP:
+                    map.scale *= 1.5
+                    if map.scale > 430:
+                        map.scale = 1
+                    map.draw()
+                    print(map.scale)
                 if pygame.key == pygame.K_ESCAPE:
                     Map(box.text)
             if gui.get_event(event) == "q":
+                os.remove("map.png")
                 terminate()
+
 
         screen.blit(BackGround.image, BackGround.rect)
         try:
-            screen.blit(pygame.image.load(map.map_file), (150, 200))
+            screen.blit(pygame.image.load("map.png"), (150, 200))
         except:
             pass
 
