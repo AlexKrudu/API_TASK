@@ -127,6 +127,7 @@ class ButtonMenu(LabelMenu):
         self.bgcolor = pygame.Color("blue")
         self.pressed = False
         self.collided = False
+        self.Rect.width = 500
         self.index = 0
         self.liste = ["map", "sat", "sat,skl"]
         self.value = value
@@ -149,9 +150,7 @@ class ButtonMenu(LabelMenu):
 
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.pressed = self.Rect.collidepoint(event.pos)
-            if self.pressed:
-                self.index += 1
-                self.text = self.liste[self.index % 3]
+
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.pressed = False
 
@@ -160,9 +159,11 @@ class Map:
     def __init__(self, address, scale):
         if scale == "default":
             scale = 3
+        self.reset = False
         self.scale = float(scale)
         self.map_file = None
         self.address = address
+        self.full_address = ""
         if address[0].isalpha():
             self.coords = self.geo_coords()
         else:
@@ -181,6 +182,7 @@ class Map:
             if response:
                 json_response = response.json()
                 self.toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
+                self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
                 toponym_coords = self.toponym["Point"]["pos"]
                 return toponym_coords
         except:
@@ -200,16 +202,18 @@ class Map:
     def draw(self):
         # toponym_to_find = self.address
         req = "http://static-maps.yandex.ru/1.x/"
-        req_params = {
+        self.req_params = {
             "ll" : ','.join(self.coords.split()),
             "spn": ",".join(self.get_bounds(self.toponym)),
             "l" : b.text,
             "size" : "400,400",
             "pt": ','.join(self.point.split()+["pm2ntm"])
         }
+        if self.reset:
+            del(self.req_params["pt"])
 
         try:
-            response = requests.get(req, params = req_params)
+            response = requests.get(req, params = self.req_params)
             if response:
                 self.map_file = "map.png"
                 try:
@@ -231,10 +235,16 @@ class Map:
 
 def terminate():
     pygame.quit()
+    try:
+        os.remove("map.png")
+    except:
+        print("ДА КАК ВЫ ПОСМЕЛИ ВЫЙТИ, НЕ ВОСПОЛЬЗОВАВШИСЬ ПРОГРАММОЙ!")
     sys.exit()
-    os.remove("map.png")
 
 b = ButtonMenu((1000, 360, 170, 50), "map", "x")
+reset = ButtonMenu((700, 450, 170, 50), "Reset search request", "y")
+address = LabelMenu((50, 150, 300, 50), "Address: ")
+
 def start_screen():
     BackGround = Background()
     gui = GUI()
@@ -247,12 +257,25 @@ def start_screen():
     #b = ButtonMenu((1000, 360, 170, 50), "map", "x")
     gui.add_element(b)
     gui.add_element(box)
+    gui.add_element(reset)
+    gui.add_element(address)
     while True:
         for event in pygame.event.get():
+            if b.pressed:
+                b.index += 1
+                b.text = b.liste[b.index % 3]
             if box.done:
-                map = Map(box.text, scale_box.text)
+                try:
+                    map = Map(box.text, scale_box.text)
+                    address.text = "Address: " + map.full_address
+                except Exception as err:
+                    address.text = "Вы что-то ввели не так!"
             if event.type == pygame.QUIT:
                 terminate()
+            if reset.pressed:
+                map.reset = True
+                map.draw()
+                address.text = "Address: "
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     y = map.get_bounds(map.toponym)[1]
