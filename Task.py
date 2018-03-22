@@ -59,6 +59,7 @@ class LabelMenu:
         self.bgcolor = None
         self.font_color = pygame.Color("black")
         self.font = pygame.font.Font("fonts/Insight_Sans.ttf", self.Rect.height - 4)
+        #self.font = pygame.font.Font(None, self.Rect.height - 4)
         self.rendered_text = None
         self.rendered_rect = None
 
@@ -127,7 +128,7 @@ class ButtonMenu(LabelMenu):
         self.pressed = False
         self.collided = False
         self.index = 0
-        self.liste = ["map", "sat", "skl"]
+        self.liste = ["map", "sat", "sat,skl"]
         self.value = value
         self.font_color = {'up': pygame.Color("black"), "collide": pygame.Color("white")}
 
@@ -157,6 +158,8 @@ class ButtonMenu(LabelMenu):
 
 class Map:
     def __init__(self, address, scale):
+        if scale == "default":
+            scale = 3
         self.scale = float(scale)
         self.map_file = None
         self.address = address
@@ -164,6 +167,7 @@ class Map:
             self.coords = self.geo_coords()
         else:
             self.coords = self.address
+        self.point = self.coords
         self.draw()
 
     def geo_coords(self):
@@ -199,8 +203,9 @@ class Map:
         req_params = {
             "ll" : ','.join(self.coords.split()),
             "spn": ",".join(self.get_bounds(self.toponym)),
-            "l" : "map",
-            "size" : "400,400"
+            "l" : b.text,
+            "size" : "400,400",
+            "pt": ','.join(self.point.split()+["pm2ntm"])
         }
 
         try:
@@ -229,7 +234,7 @@ def terminate():
     sys.exit()
     os.remove("map.png")
 
-
+b = ButtonMenu((1000, 360, 170, 50), "map", "x")
 def start_screen():
     BackGround = Background()
     gui = GUI()
@@ -239,7 +244,8 @@ def start_screen():
     gui.add_element(LabelMenu((1000, 210, 170, 50), "Scale:"))
     gui.add_element(scale_box)
     gui.add_element(LabelMenu((950, 310, 170, 50), "Type of map:"))
-    gui.add_element(ButtonMenu((1000, 360, 170, 50), "map", "x"))
+    #b = ButtonMenu((1000, 360, 170, 50), "map", "x")
+    gui.add_element(b)
     gui.add_element(box)
     while True:
         for event in pygame.event.get():
