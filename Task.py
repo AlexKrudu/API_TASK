@@ -99,6 +99,16 @@ def terminate():
         print("ДА КАК ВЫ ПОСМЕЛИ ВЫЙТИ, НЕ ВОСПОЛЬЗОВАВШИСЬ ПРОГРАММОЙ!")
     sys.exit()
 
+def change_centr_map(map,num,koef):
+    y = map.get_bounds(map.toponym)[num]
+    map.coords = [float(i) for i in map.coords.split()]
+    map.coords[num] += float(y)*koef
+    map.coords = [str(i) for i in map.coords]
+    coords = ' '.join(map.coords)
+    return coords
+
+
+
 b = ButtonMenu((1000, 360, 170, 50), "map", "x")
 reset = ButtonMenu((700, 450, 170, 50), "Reset search request", "y")
 address = LabelMenu((50, 150, 300, 50), "Address: ")
@@ -136,32 +146,17 @@ def start_screen():
                 address.text = "Address: "
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    y = map.get_bounds(map.toponym)[1]
-                    map.coords = [float(i) for i in map.coords.split()]
-                    map.coords[1] += float(y)
-                    map.coords = [str(i) for i in map.coords]
-                    map.coords = ' '.join(map.coords)
+                    map.coords = change_centr_map(map,1,1)
                     map.draw()
                 if event.key == pygame.K_DOWN:
-                    y = map.get_bounds(map.toponym)[1]
-                    map.coords = [float(i) for i in map.coords.split()]
-                    map.coords[1] -= float(y)
-                    map.coords = [str(i) for i in map.coords]
-                    map.coords = ' '.join(map.coords)
+                    map.coords = change_centr_map(map,1,-1)
                     map.draw()
                 if event.key == pygame.K_LEFT:
+                    map.coords = change_centr_map(map,0,-1)
                     y = map.get_bounds(map.toponym)[0]
-                    map.coords = [float(i) for i in map.coords.split()]
-                    map.coords[0] -= float(y)
-                    map.coords = [str(i) for i in map.coords]
-                    map.coords = ' '.join(map.coords)
                     map.draw()
                 if event.key == pygame.K_RIGHT:
-                    y = map.get_bounds(map.toponym)[0]
-                    map.coords = [float(i) for i in map.coords.split()]
-                    map.coords[0] += float(y)
-                    map.coords = [str(i) for i in map.coords]
-                    map.coords = ' '.join(map.coords)
+                    map.coords = change_centr_map(map,0,1)
                     map.draw()
 
 
