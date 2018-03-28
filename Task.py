@@ -132,6 +132,7 @@ def start_screen():
             if b.pressed:
                 b.index += 1
                 b.text = b.liste[b.index % 3]
+                map.draw()
             if box.done:
                 try:
                     map = Map(box.text, scale_box.text)
@@ -153,7 +154,6 @@ def start_screen():
                     map.draw()
                 if event.key == pygame.K_LEFT:
                     map.coords = change_centr_map(map,0,-1)
-                    y = map.get_bounds(map.toponym)[0]
                     map.draw()
                 if event.key == pygame.K_RIGHT:
                     map.coords = change_centr_map(map,0,1)
