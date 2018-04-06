@@ -161,15 +161,15 @@ def start_screen():
 
 
                 if event.key == pygame.K_PAGEDOWN:
-                    map.scale *= 0.7
-                    if map.scale < 0.004:
-                        map.scale = 1
+                    map.scale /= 2
+                    if map.scale < 0.007:
+                        map.scale = 3
                     map.draw()
                     print(map.scale)
                 if event.key == pygame.K_PAGEUP:
-                    map.scale *= 1.5
+                    map.scale *= 2
                     if map.scale > 430:
-                        map.scale = 1
+                        map.scale = 3
                     map.draw()
                     print(map.scale)
                 if pygame.key == pygame.K_ESCAPE:

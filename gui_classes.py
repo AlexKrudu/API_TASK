@@ -60,6 +60,7 @@ class TextBox(LabelMenu):
     def __init__(self, rect, text=""):
         super().__init__(rect, text)
         self.collided = False
+        self.placeholder = text
         self.text = text
         self.font_color = pygame.Color("black")
         self.active = False
@@ -89,6 +90,8 @@ class TextBox(LabelMenu):
                     self.text = self.text[:-1]
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             self.active = self.Rect.collidepoint(*event.pos)
+            if self.active:
+                self.text = ""
 
     def update(self):
         if pygame.time.get_ticks() - self.blink_timer > 200:
