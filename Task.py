@@ -29,6 +29,30 @@ class Map:
         self.point = self.coords
         self.draw()
 
+    def get_full_address(self):
+        return self.full_address
+
+    def get_scale(self):
+        return self.scale
+
+    def set_scale(self, value):
+        self.scale = value
+
+    def get_coords(self):
+        return self.coords
+
+    def set_coords(self, value):
+        self.coords = value
+
+    def get_reset(self):
+        return self.reset
+
+    def set_reset(self, value):
+        self.reset = value
+
+    def get_toponym(self):
+        return self.toponym
+
     def geo_coords(self):
         geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
         geocoder_params = {
@@ -50,11 +74,8 @@ class Map:
     def get_bounds(self, toponym):
         bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
             "upperCorner"].split()
-        koef = 3  # Подобран опытным путем
-        if self.scale != "default" and self.scale != 0:
-            koef = self.scale
-        delta = str((float(bounds[1][0]) - float(bounds[0][0])) / koef)
-        delta1 = str((float(bounds[1][1]) - float(bounds[0][1])) / koef)
+        delta = str((float(bounds[1][0]) - float(bounds[0][0])) / self.scale)
+        delta1 = str((float(bounds[1][1]) - float(bounds[0][1])) / self.scale)
         return delta, delta1
 
     def draw(self):
@@ -100,11 +121,11 @@ def terminate():
     sys.exit()
 
 def change_centr_map(map,num,koef):
-    y = map.get_bounds(map.toponym)[num]
-    map.coords = [float(i) for i in map.coords.split()]
-    map.coords[num] += float(y)*koef
-    map.coords = [str(i) for i in map.coords]
-    coords = ' '.join(map.coords)
+    y = map.get_bounds(map.get_toponym())[num]
+    coords = [float(i) for i in map.get_coords().split()]
+    coords[num] += float(y)*koef
+    map.set_coords([str(i) for i in coords])
+    coords = ' '.join(map.get_coords())
     return coords
 
 
@@ -136,40 +157,38 @@ def start_screen():
             if box.done:
                 try:
                     map = Map(box.text, scale_box.text)
-                    address.text = "Address: " + map.full_address
+                    address.text = "Address: " + map.get_full_address()
                 except Exception as err:
                     address.text = "Вы что-то ввели не так!"
             if event.type == pygame.QUIT:
                 terminate()
-            if reset.pressed:
-                map.reset = True
+            if reset.pressed and address.text != "Address: ":
+                map.set_reset(True)
                 map.draw()
                 address.text = "Address: "
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
-                    map.coords = change_centr_map(map,1,1)
+                    map.set_coords(change_centr_map(map,1,1))
                     map.draw()
                 if event.key == pygame.K_DOWN:
-                    map.coords = change_centr_map(map,1,-1)
+                    map.set_coords(change_centr_map(map,1,-1))
                     map.draw()
                 if event.key == pygame.K_LEFT:
-                    map.coords = change_centr_map(map,0,-1)
+                    map.set_coords(change_centr_map(map,0,-1))
                     map.draw()
                 if event.key == pygame.K_RIGHT:
-                    map.coords = change_centr_map(map,0,1)
+                    map.set_coords(change_centr_map(map,0,1))
                     map.draw()
-
-
                 if event.key == pygame.K_PAGEDOWN:
-                    map.scale /= 2
-                    if map.scale < 0.007:
-                        map.scale = 3
+                    map.set_scale(map.get_scale() / 2)
+                    if map.get_scale() < 0.007:
+                        map.set_scale(map.get_scale() * 2)
                     map.draw()
                     print(map.scale)
                 if event.key == pygame.K_PAGEUP:
-                    map.scale *= 2
-                    if map.scale > 430:
-                        map.scale = 3
+                    map.set_scale(map.get_scale() * 2)
+                    if map.get_scale() > 430:
+                        map.set_scale(map.get_scale() / 2)
                     map.draw()
                     print(map.scale)
                 if pygame.key == pygame.K_ESCAPE:
