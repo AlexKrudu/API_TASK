@@ -37,6 +37,37 @@ class GUI:
                     return r
 
 
+class Checkbox:
+    def __init__(self, rect, text):
+        self.Rect = pygame.Rect(rect)
+        self.text = text
+        self.bgcolor = pygame.Color("black")
+        self.font_color = pygame.Color("black")
+        self.font = pygame.font.Font("fonts/Insight_Sans.ttf", self.Rect.height - 4)
+        self.rendered_text = None
+        self.rendered_rect = None
+        self.box_rect = None
+        self.focus = False
+        self.tapped = False
+
+    def get_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            self.focus = self.box_rect.collidepoint(event.pos)
+            if self.focus:
+                self.tapped = not(self.tapped)
+
+    def render(self, surface):
+        self.rendered_text = self.font.render(self.text, 1, self.font_color, pygame.SRCALPHA)
+        self.rendered_rect = self.rendered_text.get_rect(x=self.Rect.x + 2, centery=self.Rect.centery)
+
+        surface.blit(self.rendered_text, self.rendered_rect)
+        self.box_rect = pygame.Rect(self.rendered_rect.x + self.rendered_rect.width + 5, self.rendered_rect.y - 5, 50, 50)
+        if self.tapped:
+            pygame.draw.rect(surface, self.bgcolor, self.box_rect, 0)
+
+        else:
+            pygame.draw.rect(surface, self.bgcolor, self.box_rect, 1)
+
 class LabelMenu:
     def __init__(self, rect, text):
         self.Rect = pygame.Rect(rect)

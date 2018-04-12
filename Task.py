@@ -2,7 +2,7 @@ import pygame
 import sys
 import requests
 import os
-from gui_classes import Background, GUI, LabelMenu, TextBox, ButtonMenu
+from gui_classes import Background, GUI, LabelMenu, TextBox, ButtonMenu, Checkbox
 
 map_image = None
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
@@ -17,6 +17,7 @@ class Map:
     def __init__(self, address, scale):
         if scale == "default":
             scale = 3
+        self.post_index = index.tapped
         self.reset = False
         self.scale = float(scale)
         self.map_file = None
@@ -56,20 +57,32 @@ class Map:
     def geo_coords(self):
         geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
         geocoder_params = {
-            "geocode" : self.address,
-            "format" : "json"
+            "geocode": self.address,
+            "format": "json"
         }
         try:
-            response = requests.get(geocoder_api_server, params = geocoder_params)
+            response = requests.get(geocoder_api_server, params=geocoder_params)
             if response:
                 json_response = response.json()
                 self.toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0]["GeoObject"]
                 self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
+                self.change_address()
                 toponym_coords = self.toponym["Point"]["pos"]
                 return toponym_coords
         except:
             print("Что-то пошло не так")
         return None
+
+    def change_address(self):
+        self.post_index = index.tapped
+        try:
+            self.index = self.toponym["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
+        except Exception:
+            print("Нету почтового кода")
+            self.index = ''
+        self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
+        if self.post_index:
+            self.full_address += ", " + self.index
 
     def get_bounds(self, toponym):
         bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
@@ -132,6 +145,7 @@ def change_centr_map(map,num,koef):
 
 b = ButtonMenu((1000, 360, 170, 50), "map", "x")
 reset = ButtonMenu((700, 450, 170, 50), "Reset search request", "y")
+index = Checkbox((600, 525, 170, 50), "Include post index in address: ")
 address = LabelMenu((50, 150, 300, 50), "Address: ")
 
 def start_screen():
@@ -148,8 +162,12 @@ def start_screen():
     gui.add_element(box)
     gui.add_element(reset)
     gui.add_element(address)
+    gui.add_element(index)
     while True:
         for event in pygame.event.get():
+            if index.focus and address.text != "Address: ":
+                map.change_address()
+                address.text = "Address: " + map.get_full_address()
             if b.pressed:
                 b.index += 1
                 b.text = b.liste[b.index % 3]
