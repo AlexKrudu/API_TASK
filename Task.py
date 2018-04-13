@@ -100,6 +100,7 @@ class Map:
             delta1 = (float(bounds[1][1]) - float(bounds[0][1])) / self.scale
         return str(delta),str(delta1)
 
+
     def draw(self):
         # toponym_to_find = self.address
         req = "http://static-maps.yandex.ru/1.x/"
@@ -257,16 +258,16 @@ def start_screen():
                     map.draw()
                 if event.key == pygame.K_PAGEDOWN:
                     map.set_scale(map.get_scale() / 2)
-                    if map.get_scale() < 0.007:
+                    if float(map.get_bounds(map.get_toponym())[0]) > 35:
                         map.set_scale(map.get_scale() * 2)
                     map.draw()
-                    print(map.scale)
+                    print(map.get_bounds(map.toponym))
                 if event.key == pygame.K_PAGEUP:
                     map.set_scale(map.get_scale() * 2)
-                    if map.get_scale() > 430:
+                    if float(map.get_bounds(map.get_toponym())[0]) < 0.002:
                         map.set_scale(map.get_scale() / 2)
                     map.draw()
-                    print(map.scale)
+                    print(map.get_bounds(map.toponym))
                 if pygame.key == pygame.K_ESCAPE:
                     Map(box.text)
             if gui.get_event(event) == "q":
