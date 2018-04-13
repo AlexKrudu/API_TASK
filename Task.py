@@ -17,6 +17,7 @@ class Map:
     def __init__(self, address, scale):
         if scale == "default":
             scale = 3
+        self.clicked = False
         self.post_index = index.tapped
         self.reset = False
         self.scale = float(scale)
@@ -73,23 +74,31 @@ class Map:
             print("Что-то пошло не так")
         return None
 
-    def change_address(self):
+    def change_address(self, *toponym):
         self.post_index = index.tapped
         try:
             self.index = self.toponym["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
         except Exception:
             print("Нету почтового кода")
-            self.index = ''
+            self.index = 'индекс не найден'
         self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
+        try:
+            self.full_address = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["text"]
+            self.index = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
+        except Exception:
+            print("Значит мы просто не передали параметр, все ок")
         if self.post_index:
             self.full_address += ", " + self.index
 
     def get_bounds(self, toponym):
-        bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
-            "upperCorner"].split()
-        delta = str((float(bounds[1][0]) - float(bounds[0][0])) / self.scale)
-        delta1 = str((float(bounds[1][1]) - float(bounds[0][1])) / self.scale)
-        return delta, delta1
+        delta = ""
+        delta1 = ""
+        if not self.clicked:
+            bounds = toponym["boundedBy"]["Envelope"]["lowerCorner"].split(), toponym["boundedBy"]["Envelope"][
+                    "upperCorner"].split()
+            delta = (float(bounds[1][0]) - float(bounds[0][0])) / self.scale
+            delta1 = (float(bounds[1][1]) - float(bounds[0][1])) / self.scale
+        return str(delta),str(delta1)
 
     def draw(self):
         # toponym_to_find = self.address
@@ -103,7 +112,10 @@ class Map:
         }
         if self.reset:
             del(self.req_params["pt"])
-
+        if self.clicked:
+            self.req_params["spn"] = ",".join([str(float(i) / self.scale) for i in self.last_spn.split(",")])
+        else:
+            self.last_spn = self.req_params["spn"]
         try:
             response = requests.get(req, params = self.req_params)
             if response:
@@ -135,11 +147,32 @@ def terminate():
 
 def change_centr_map(map,num,koef):
     y = map.get_bounds(map.get_toponym())[num]
+    if map.clicked:
+        y = [float(i) for i in map.last_spn.split(",")][num]
     coords = [float(i) for i in map.get_coords().split()]
     coords[num] += float(y)*koef
     map.set_coords([str(i) for i in coords])
     coords = ' '.join(map.get_coords())
     return coords
+
+
+def get_coords_click(pos, params):
+    a, b = pos
+    a = int(a) - 350
+    b = int(b) - 200
+    b = -b + 200
+    values = [float(i) for i in params["spn"].split(",")]
+    koef_a = a / 200
+    koef_b = b / 200
+    delta_a = values[0] / 2 * koef_a
+    delta_b = values[1] / 2 * koef_b
+    result = [float(i) for i in params["ll"].split(",")]
+    result[0] += delta_a
+    result[1] += delta_b
+    result = [str(i) for i in result]
+    result =  ','.join(result)
+    return result
+
 
 
 
@@ -163,10 +196,34 @@ def start_screen():
     gui.add_element(reset)
     gui.add_element(address)
     gui.add_element(index)
+    clicked = False
     while True:
         for event in pygame.event.get():
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if 150 <= event.pos[0] <= 550 and 200 <= event.pos[0] <= 600:
+                    clicked = True
+                    addressy = get_coords_click(event.pos, map.req_params)
+                    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
+                    geocoder_params = {
+                        "geocode": addressy,
+                        "format": "json"
+                    }
+                    try:
+                        response = requests.get(geocoder_api_server, params=geocoder_params)
+                        if response:
+                            json_response = response.json()
+                            toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0][
+                                "GeoObject"]
+                            map.full_address = toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
+                    except Exception:
+                        print("Упс")
+                    map.point = " ".join(addressy.split(','))
+                    map.draw()
+                    address.text = map.full_address
             if index.focus and address.text != "Address: ":
                 map.change_address()
+                if clicked:
+                    map.change_address(toponym)
                 address.text = "Address: " + map.get_full_address()
             if b.pressed:
                 b.index += 1
@@ -181,6 +238,7 @@ def start_screen():
             if event.type == pygame.QUIT:
                 terminate()
             if reset.pressed and address.text != "Address: ":
+                clicked = False
                 map.set_reset(True)
                 map.draw()
                 address.text = "Address: "
