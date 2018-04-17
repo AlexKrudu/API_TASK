@@ -164,8 +164,8 @@ def get_coords_click(pos, params):
     values = [float(i) for i in params["spn"].split(",")]
     koef_a = a / 200
     koef_b = b / 200
-    delta_a = values[0] / 2 * koef_a # Делим не на 2 , а на 1.3 из-за искажения реальных координат проекцией Меркатора
-    delta_b = values[1] / 2 * koef_b
+    delta_a = values[0] / 1.9 * koef_a # Делим не на 2 , а на 1.3 из-за искажения реальных координат проекцией Меркатора
+    delta_b = values[1] / 1.9 * koef_b
     result = [float(i) for i in params["ll"].split(",")]
     result[0] += delta_a
     result[1] += delta_b
