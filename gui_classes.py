@@ -80,6 +80,12 @@ class LabelMenu:
         self.rendered_text = None
         self.rendered_rect = None
 
+    def get_text(self):
+        return self.text
+
+    def set_text(self, value):
+        self.text = value
+
     def render(self, surface):
         self.rendered_text = self.font.render(self.text, 1, self.font_color, pygame.SRCALPHA)
         self.rendered_rect = self.rendered_text.get_rect(x=self.Rect.x + 2, centery=self.Rect.centery)
