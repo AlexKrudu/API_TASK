@@ -18,7 +18,7 @@ class Map:
         if scale == "default":
             scale = 3
         self.clicked = False
-        self.post_index = index.tapped
+        self.post_index = index.get_tapped()
         self.reset = False
         self.scale = float(scale)
         self.map_file = None
@@ -75,12 +75,12 @@ class Map:
         return None
 
     def change_address(self, *toponym):
-        self.post_index = index.tapped
+        self.post_index = index.get_tapped()
         try:
             self.index = self.toponym["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
         except Exception:
             print("Нету почтового кода")
-            self.index = ''
+            self.index = 'индекс не найден'
         self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
         try:
             self.full_address = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["text"]
@@ -106,7 +106,7 @@ class Map:
         self.req_params = {
             "ll" : ','.join(self.coords.split()),
             "spn": ",".join(self.get_bounds(self.toponym)),
-            "l" : b.text,
+            "l" : b.get_text(),
             "size" : "400,400",
             "pt": ','.join(self.point.split()+["pm2ntm"])
         }
@@ -219,28 +219,34 @@ def start_screen():
                         print("Упс")
                     map.point = " ".join(addressy.split(','))
                     map.draw()
-                    address.text = map.full_address
-            if index.focus and address.get_text() != "Address: ":
-                map.change_address()
-                if clicked and address.get_text() != "Address: ":
-                    map.change_address(toponym)
-                address.set_text("Address: " + map.get_full_address())
-            if b.pressed and address.get_text() != "Address: ":
-                b.index += 1
-                b.text = b.liste[b.index % 3]
+                    address.set_text(map.full_address)
+            try:
+                if index.get_focus() and address.get_text() != "Address: ":
+                    map.change_address()
+                    if clicked and address.get_text() != "Address: ":
+                        map.change_address(toponym)
+                    address.set_text("Address: " + map.get_full_address())
+            except NameError:
+                pass
+            if b.get_pressed() and address.get_text() != "Address: ":
+                b.set_index(b.get_index() + 1)
+                b.set_text(b.get_list()[b.get_index() % 3])
                 map.draw()
-            if box.done:
+            if box.get_done():
                 try:
                     map = Map(box.text, scale_box.text)
                     address.set_text("Address: " + map.get_full_address())
                 except Exception as err:
-                    address.text = "Вы что-то ввели не так!"
+                    address.set_text("Вы что-то ввели не так!")
             if event.type == pygame.QUIT:
                 terminate()
             if reset.pressed and address.get_text() != "Address: ":
                 clicked = False
-                map.set_reset(True)
-                map.draw()
+                try:
+                    map.set_reset(True)
+                    map.draw()
+                except NameError:
+                    pass
                 address.set_text("Address: ")
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:

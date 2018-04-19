@@ -56,6 +56,15 @@ class Checkbox:
             if self.focus:
                 self.tapped = not(self.tapped)
 
+
+    def get_focus(self):
+        return self.focus
+
+
+    def get_tapped(self):
+        return self.tapped
+
+
     def render(self, surface):
         self.rendered_text = self.font.render(self.text, 1, self.font_color, pygame.SRCALPHA)
         self.rendered_rect = self.rendered_text.get_rect(x=self.Rect.x + 2, centery=self.Rect.centery)
@@ -135,6 +144,7 @@ class TextBox(LabelMenu):
             self.blink = not self.blink
             self.blink_timer = pygame.time.get_ticks()
 
+
     def render(self, surface):
         super(TextBox, self).render(surface)
         if self.collided and not self.active:
@@ -145,6 +155,10 @@ class TextBox(LabelMenu):
             pygame.draw.line(surface, [255 - self.font_color[c] for c in range(3)],
                              (self.rendered_rect.right + 2, self.rendered_rect.top + 2),
                              (self.rendered_rect.right + 2, self.rendered_rect.bottom - 2), 2)
+
+
+    def get_done(self):
+        return self.done
 
 
 class ButtonMenu(LabelMenu):
@@ -179,3 +193,20 @@ class ButtonMenu(LabelMenu):
 
         elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             self.pressed = False
+
+
+    def get_pressed(self):
+        return self.pressed
+
+    def get_index(self):
+        return self.index
+
+    def set_index(self,index):
+        self.index = index
+
+    def set_text(self,value):
+        self.text = value
+
+
+    def get_list(self):
+        return self.liste
