@@ -31,6 +31,12 @@ class Map:
         self.point = self.coords
         self.draw()
 
+    def set_full_address(self, value):
+        self.full_address = value
+
+    def set_point(self, value):
+        self.point = value
+
     def get_full_address(self):
         return self.full_address
 
@@ -214,10 +220,10 @@ def start_screen():
                             json_response = response.json()
                             toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0][
                                 "GeoObject"]
-                            map.full_address = toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
+                            map.set_full_address("Address: " + toponym["metaDataProperty"]["GeocoderMetaData"]["text"])
                     except Exception:
                         print("Упс")
-                    map.point = " ".join(addressy.split(','))
+                    map.set_point(" ".join(addressy.split(',')))
                     map.draw()
                     address.set_text(map.full_address)
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
@@ -236,10 +242,10 @@ def start_screen():
                         response = requests.get(org_search, params=org_params)
                         json_r = response.json()
                         toponym = json_r["features"][0]["properties"]["CompanyMetaData"]
-                        map.full_address = toponym["name"] + ", " + toponym["address"]
+                        map.set_full_address(toponym["name"] + ", " + toponym["address"])
                     except Exception:
                         print("Ошибка запроса")
-                    map.point = " ".join(addressy.split(','))
+                    map.set_point(" ".join(addressy.split(',')))
                     map.draw()
                     address.set_text(map.full_address)
             try:
@@ -258,6 +264,7 @@ def start_screen():
                 try:
                     map = Map(box.text, scale_box.text)
                     address.set_text("Address: " + map.get_full_address())
+                    clicked = False
                 except AttributeError as err:
                     address.set_text("Вы что-то ввели не так!")
             if event.type == pygame.QUIT:
