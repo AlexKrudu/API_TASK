@@ -165,7 +165,7 @@ def get_coords_click(pos, params):
     koef_a = a / 200
     koef_b = b / 200
     delta_a = values[0] / 1.9 * koef_a # Делим не на 2 , а на 1.3 из-за искажения реальных координат проекцией Меркатора
-    delta_b = values[1] / 1.9 * koef_b
+    delta_b = values[1] / 1.5 * koef_b
     result = [float(i) for i in params["ll"].split(",")]
     result[0] += delta_a
     result[1] += delta_b
@@ -220,6 +220,28 @@ def start_screen():
                     map.point = " ".join(addressy.split(','))
                     map.draw()
                     address.set_text(map.full_address)
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
+                if 150 <= event.pos[0] <= 550 and 200 <= event.pos[1] <= 600:
+                    api_key = "3c4a592e-c4c0-4949-85d1-97291c87825c"
+                    org_search = "https://search-maps.yandex.ru/v1/"
+                    clicked = True
+                    addressy = get_coords_click(event.pos, map.req_params)
+                    org_params = {"apikey": api_key,
+                                  "text": addressy,
+                                  "type": "biz",
+                                  "lang": "ru_RU",
+                                  "ll": addressy,
+                                  "spn": "0.0004498668394,0.0004498668394"}
+                    try:
+                        response = requests.get(org_search, params=org_params)
+                        json_r = response.json()
+                        toponym = json_r["features"][0]["properties"]["CompanyMetaData"]
+                        map.full_address = toponym["name"] + ", " + toponym["address"]
+                    except Exception:
+                        print("Ошибка запроса")
+                    map.point = " ".join(addressy.split(','))
+                    map.draw()
+                    address.set_text(map.full_address)
             try:
                 if index.get_focus() and address.get_text() != "Address: ":
                     map.change_address()
@@ -236,7 +258,7 @@ def start_screen():
                 try:
                     map = Map(box.text, scale_box.text)
                     address.set_text("Address: " + map.get_full_address())
-                except Exception as err:
+                except AttributeError as err:
                     address.set_text("Вы что-то ввели не так!")
             if event.type == pygame.QUIT:
                 terminate()
