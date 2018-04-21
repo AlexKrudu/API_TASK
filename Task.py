@@ -20,7 +20,11 @@ class Map:
         self.clicked = False
         self.post_index = index.get_tapped()
         self.reset = False
-        self.scale = float(scale)
+        try:
+            self.scale = float(scale)
+        except ValueError:
+            self.scale = 3
+            print("Значит передали не число")
         self.map_file = None
         self.address = address
         self.full_address = ""
@@ -123,6 +127,7 @@ class Map:
         else:
             self.last_spn = self.req_params["spn"]
         try:
+            print(self.req_params["ll"])
             response = requests.get(req, params = self.req_params)
             if response:
                 self.map_file = "map.png"
@@ -292,16 +297,16 @@ def start_screen():
                     map.draw()
                 if event.key == pygame.K_PAGEDOWN:
                     map.set_scale(map.get_scale() / 2)
-                    if map.get_scale() < 0.007:
+                    if float(map.get_bounds(map.get_toponym())[0]) > 35:
                         map.set_scale(map.get_scale() * 2)
                     map.draw()
-                    print(map.scale)
+                    print(map.get_bounds(map.toponym))
                 if event.key == pygame.K_PAGEUP:
                     map.set_scale(map.get_scale() * 2)
-                    if map.get_scale() > 430:
+                    if float(map.get_bounds(map.get_toponym())[0]) < 0.002:
                         map.set_scale(map.get_scale() / 2)
                     map.draw()
-                    print(map.scale)
+                    print(map.get_bounds(map.toponym))
                 if pygame.key == pygame.K_ESCAPE:
                     Map(box.text)
             if gui.get_event(event) == "q":
