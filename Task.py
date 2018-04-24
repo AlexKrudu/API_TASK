@@ -17,6 +17,14 @@ class Map:
     def __init__(self, address, scale):
         if scale == "default":
             scale = 3
+        self.spns = ["0.002091531249999982,0.000989458333333304", "0.004183062499999964,0.001978916666666608",
+                     "0.008366124999999927,0.003957833333333216", "0.016732249999999855,0.007915666666666432",
+                     "0.03346449999999971,0.015831333333332864", "0.06692899999999942,0.03166266666666573",
+                     "0.13385799999999884,0.06332533333333146", "0.2677159999999977,0.12665066666666291",
+                     "0.5354319999999954,0.25330133333332583", "1.0708639999999907,0.5066026666666517",
+                     "2.1417279999999814,1.0132053333333033", "4.283455999999963,2.0264106666666066",
+                     "8.566911999999926,4.052821333333213", "17.13382399999985,8.105642666666427",
+                     "34.2676479999997,16.211285333332853"]
         self.clicked = False
         self.post_index = index.get_tapped()
         self.reset = False
@@ -46,6 +54,12 @@ class Map:
 
     def get_scale(self):
         return self.scale
+
+    def set_index(self, value):
+        self.index = value
+
+    def get_index(self):
+        return self.index
 
     def set_scale(self, value):
         self.scale = value
@@ -113,9 +127,13 @@ class Map:
     def draw(self):
         # toponym_to_find = self.address
         req = "http://static-maps.yandex.ru/1.x/"
+        spn = self.get_bounds(self.toponym)
+        self.spns = [i.split(",") for i in self.spns]
+        value = min(self.spns, key=lambda x: abs(float(x[0])-float(spn[0])))
+        self.index = self.spns.index(value)
         self.req_params = {
             "ll" : ','.join(self.coords.split()),
-            "spn": ",".join(self.get_bounds(self.toponym)),
+            "spn": ",".join(self.spns[self.index % 15]),
             "l" : b.get_text(),
             "size" : "400,400",
             "pt": ','.join(self.point.split()+["pm2ntm"])
@@ -127,7 +145,7 @@ class Map:
         else:
             self.last_spn = self.req_params["spn"]
         try:
-            print(self.req_params["ll"])
+            print(self.req_params["spn"])
             response = requests.get(req, params = self.req_params)
             if response:
                 self.map_file = "map.png"
@@ -296,15 +314,15 @@ def start_screen():
                     map.set_coords(change_centr_map(map,0,1))
                     map.draw()
                 if event.key == pygame.K_PAGEDOWN:
-                    map.set_scale(map.get_scale() / 2)
-                    if float(map.get_bounds(map.get_toponym())[0]) > 35:
-                        map.set_scale(map.get_scale() * 2)
+                    map.set_index(map.get_index() + 1)
+                    # if float(map.get_bounds(map.get_toponym())[0]) > 35:
+                    #     map.set_scale(map.get_scale() * 2)
                     map.draw()
                     print(map.get_bounds(map.toponym))
                 if event.key == pygame.K_PAGEUP:
-                    map.set_scale(map.get_scale() * 2)
-                    if float(map.get_bounds(map.get_toponym())[0]) < 0.002:
-                        map.set_scale(map.get_scale() / 2)
+                    map.set_index(map.get_index() - 1)
+                    # if float(map.get_bounds(map.get_toponym())[0]) < 0.002:
+                    #     map.set_scale(map.get_scale() / 2)
                     map.draw()
                     print(map.get_bounds(map.toponym))
                 if pygame.key == pygame.K_ESCAPE:
