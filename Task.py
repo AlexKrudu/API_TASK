@@ -270,7 +270,7 @@ def start_screen():
                         toponym = json_r["features"][0]["properties"]["CompanyMetaData"]
                         map.set_full_address(toponym["name"] + ", " + toponym["address"])
                     except Exception:
-                        print("Ошибка запроса")
+                        map.set_full_address("")
                     map.set_point(" ".join(addressy.split(',')))
                     map.draw()
                     address.set_text("Address: " + map.get_full_address())
