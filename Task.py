@@ -25,6 +25,7 @@ class Map:
                      "2.1417279999999814,1.0132053333333033", "4.283455999999963,2.0264106666666066",
                      "8.566911999999926,4.052821333333213", "17.13382399999985,8.105642666666427",
                      "34.2676479999997,16.211285333332853"]
+        self.spns = [i.split(",") for i in self.spns]
         self.clicked = False
         self.post_index = index.get_tapped()
         self.reset = False
@@ -100,19 +101,22 @@ class Map:
 
     def change_address(self, *toponym):
         self.post_index = index.get_tapped()
+        address = self.full_address
         try:
-            self.index = self.toponym["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
+            self.posty_index = self.toponym["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
         except Exception:
             print("Нету почтового кода")
-            self.index = 'индекс не найден'
+            self.posty_index = 'индекс не найден'
         self.full_address = self.toponym["metaDataProperty"]["GeocoderMetaData"]["text"]
         try:
             self.full_address = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["text"]
-            self.index = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
-        except Exception:
-            print("Значит мы просто не передали параметр, все ок")
+            self.posty_index = toponym[0]["metaDataProperty"]["GeocoderMetaData"]["Address"]["postal_code"]
+        except KeyError:
+            self.full_address = toponym[0]["name"] + ", " + toponym[0]["address"]
+        except Exception as err:
+            print(err)
         if self.post_index:
-            self.full_address += ", " + self.index
+            self.full_address += ", " + self.posty_index
 
     def get_bounds(self, toponym):
         delta = ""
@@ -127,21 +131,20 @@ class Map:
     def draw(self):
         # toponym_to_find = self.address
         req = "http://static-maps.yandex.ru/1.x/"
-        spn = self.get_bounds(self.toponym)
-        self.spns = [i.split(",") for i in self.spns]
-        value = min(self.spns, key=lambda x: abs(float(x[0])-float(spn[0])))
-        self.index = self.spns.index(value)
+        if not self.clicked:
+            spn = self.get_bounds(self.toponym)
+            value = min(self.spns, key=lambda x: abs(float(x[0])-float(spn[0])))
+            self.index = self.spns.index(value)
+            self.clicked = True
         self.req_params = {
             "ll" : ','.join(self.coords.split()),
-            "spn": ",".join(self.spns[self.index % 15]),
+            "spn": ",".join(self.spns[self.index]),
             "l" : b.get_text(),
             "size" : "400,400",
             "pt": ','.join(self.point.split()+["pm2ntm"])
         }
         if self.reset:
             del(self.req_params["pt"])
-        if self.clicked:
-            self.req_params["spn"] = ",".join([str(float(i) / self.scale) for i in self.last_spn.split(",")])
         else:
             self.last_spn = self.req_params["spn"]
         try:
@@ -270,12 +273,13 @@ def start_screen():
                         print("Ошибка запроса")
                     map.set_point(" ".join(addressy.split(',')))
                     map.draw()
-                    address.set_text(map.full_address)
+                    address.set_text("Address: " + map.get_full_address())
             try:
                 if index.get_focus() and address.get_text() != "Address: ":
-                    map.change_address()
                     if clicked and address.get_text() != "Address: ":
                         map.change_address(toponym)
+                    else:
+                        map.change_address()
                     address.set_text("Address: " + map.get_full_address())
             except NameError:
                 pass
@@ -315,14 +319,14 @@ def start_screen():
                     map.draw()
                 if event.key == pygame.K_PAGEDOWN:
                     map.set_index(map.get_index() + 1)
-                    # if float(map.get_bounds(map.get_toponym())[0]) > 35:
-                    #     map.set_scale(map.get_scale() * 2)
+                    if map.get_index() > 14 :
+                        map.set_index(map.get_index() - 1)
                     map.draw()
                     print(map.get_bounds(map.toponym))
                 if event.key == pygame.K_PAGEUP:
                     map.set_index(map.get_index() - 1)
-                    # if float(map.get_bounds(map.get_toponym())[0]) < 0.002:
-                    #     map.set_scale(map.get_scale() / 2)
+                    if map.get_index() < 0:
+                        map.set_index(map.get_index() + 1)
                     map.draw()
                     print(map.get_bounds(map.toponym))
                 if pygame.key == pygame.K_ESCAPE:
