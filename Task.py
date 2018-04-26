@@ -3,7 +3,10 @@ import sys
 import requests
 import os
 from gui_classes import Background, GUI, LabelMenu, TextBox, ButtonMenu, Checkbox
+import math
 
+api_key = "3c4a592e-c4c0-4949-85d1-97291c87825c"
+org_search = "https://search-maps.yandex.ru/v1/"
 map_image = None
 geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
 toponym_to_find = None
@@ -12,11 +15,10 @@ pygame.init()
 running = True
 size = width, height = 1280, 720
 screen = pygame.display.set_mode(size)
+addy = "Address: "
 
 class Map:
     def __init__(self, address, scale):
-        if scale == "default":
-            scale = 3
         self.spns = ["0.002091531249999982,0.000989458333333304", "0.004183062499999964,0.001978916666666608",
                      "0.008366124999999927,0.003957833333333216", "0.016732249999999855,0.007915666666666432",
                      "0.03346449999999971,0.015831333333332864", "0.06692899999999942,0.03166266666666573",
@@ -81,7 +83,6 @@ class Map:
         return self.toponym
 
     def geo_coords(self):
-        geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
         geocoder_params = {
             "geocode": self.address,
             "format": "json"
@@ -169,6 +170,19 @@ class Map:
             pass
 
 
+def lonlat_distance(a, b):
+    degree_to_meters_factor = 111 * 1000
+    a_lon, a_lat = a
+    b_lon, b_lat = b
+    radians_lattitude = math.radians((a_lat + b_lat) / 2.)
+    lat_lon_factor = math.cos(radians_lattitude)
+    dx = abs(a_lon - b_lon) * degree_to_meters_factor * lat_lon_factor
+    dy = abs(a_lat - b_lat) * degree_to_meters_factor
+    distance = math.sqrt(dx * dx + dy * dy)
+
+    return distance
+
+
 def terminate():
     pygame.quit()
     try:
@@ -211,7 +225,7 @@ def get_coords_click(pos, params):
 b = ButtonMenu((1000, 360, 170, 50), "map", "x")
 reset = ButtonMenu((700, 450, 170, 50), "Reset search request", "y")
 index = Checkbox((600, 525, 170, 50), "Include post index in address: ")
-address = LabelMenu((50, 150, 300, 50), "Address: ")
+address = LabelMenu((50, 150, 300, 50), addy)
 
 def start_screen():
     clicked = False
@@ -231,11 +245,10 @@ def start_screen():
     gui.add_element(index)
     while True:
         for event in pygame.event.get():
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-                if 150 <= event.pos[0] <= 550 and 200 <= event.pos[1] <= 600:
-                    clicked = True
-                    addressy = get_coords_click(event.pos, map.req_params)
-                    geocoder_api_server = "http://geocode-maps.yandex.ru/1.x/"
+            if event.type == pygame.MOUSEBUTTONDOWN and 150 <= event.pos[0] <= 550 and 200 <= event.pos[1] <= 600:
+                clicked = True
+                addressy = get_coords_click(event.pos, map.req_params)
+                if event.button == 1:
                     geocoder_params = {
                         "geocode": addressy,
                         "format": "json"
@@ -246,64 +259,66 @@ def start_screen():
                             json_response = response.json()
                             toponym = json_response["response"]["GeoObjectCollection"]["featureMember"][0][
                                 "GeoObject"]
-                            map.set_full_address("Address: " + toponym["metaDataProperty"]["GeocoderMetaData"]["text"])
+                            map.set_full_address(addy + toponym["metaDataProperty"]["GeocoderMetaData"]["text"])
                     except Exception:
                         print("Упс")
                     map.set_point(" ".join(addressy.split(',')))
                     map.draw()
                     address.set_text(map.full_address)
-            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 3:
-                if 150 <= event.pos[0] <= 550 and 200 <= event.pos[1] <= 600:
-                    api_key = "3c4a592e-c4c0-4949-85d1-97291c87825c"
-                    org_search = "https://search-maps.yandex.ru/v1/"
-                    clicked = True
-                    addressy = get_coords_click(event.pos, map.req_params)
+
+                if event.button == 3:
+                    radius = 50/111144
                     org_params = {"apikey": api_key,
                                   "text": addressy,
                                   "type": "biz",
                                   "lang": "ru_RU",
                                   "ll": addressy,
-                                  "spn": "0.0004498668394,0.0004498668394"}
+                                  "spn": ",".join([str(radius), str(radius)])}
                     try:
                         response = requests.get(org_search, params=org_params)
                         json_r = response.json()
-                        toponym = json_r["features"][0]["properties"]["CompanyMetaData"]
+                        organizations = json_r["features"]
+                        toponym = None
+                        for i in range(len(organizations)):
+                            if lonlat_distance(organizations[i]["geometry"]["coordinates"], [float(i) for i in addressy.split(",")]) < 50:
+                                toponym = organizations[i]["properties"]["CompanyMetaData"]
+                                break
                         map.set_full_address(toponym["name"] + ", " + toponym["address"])
-                    except Exception:
+                    except Exception as err:
                         map.set_full_address("")
                     map.set_point(" ".join(addressy.split(',')))
                     map.draw()
-                    address.set_text("Address: " + map.get_full_address())
+                    address.set_text(addy + map.get_full_address())
             try:
-                if index.get_focus() and address.get_text() != "Address: ":
-                    if clicked and address.get_text() != "Address: ":
+                if index.get_focus() and address.get_text() != addy:
+                    if clicked and address.get_text() != addy:
                         map.change_address(toponym)
                     else:
                         map.change_address()
-                    address.set_text("Address: " + map.get_full_address())
+                    address.set_text(addy + map.get_full_address())
             except NameError:
                 pass
-            if b.get_pressed() and address.get_text() != "Address: ":
+            if b.get_pressed() and address.get_text() != addy:
                 b.set_index(b.get_index() + 1)
                 b.set_text(b.get_list()[b.get_index() % 3])
                 map.draw()
             if box.get_done():
                 try:
                     map = Map(box.text, scale_box.text)
-                    address.set_text("Address: " + map.get_full_address())
+                    address.set_text(addy + map.get_full_address())
                     clicked = False
                 except AttributeError as err:
                     address.set_text("Вы что-то ввели не так!")
             if event.type == pygame.QUIT:
                 terminate()
-            if reset.pressed and address.get_text() != "Address: ":
+            if reset.pressed and address.get_text() != addy:
                 clicked = False
                 try:
                     map.set_reset(True)
                     map.draw()
                 except NameError:
                     pass
-                address.set_text("Address: ")
+                address.set_text(addy)
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_UP:
                     map.set_coords(change_centr_map(map,1,1))
